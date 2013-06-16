@@ -36,18 +36,16 @@ g = function(x,xs){
   x
 }
 
-df3 = f(data.frame(x=1:10,y=rnorm(10),splitter=1))
-df3 = f(data.frame(x=0:9,y=c(0.5,0.1627684,0.3072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1))
 
 colors = c("#B21212","#FF0000","#0971B2","#1485CC")
 num.steps = 2
 
-colors = c("#4C1512","#CC3730","#CC716D","#1B204C","#4855CC","#868CCC")
-num.steps = 3
+#colors = c("#4C1512","#CC3730","#CC716D","#1B204C","#4855CC","#868CCC")
+#num.steps = 3
 
 plot.bands = function(df,num.steps){
   step = steps(df$y,num.steps)
-  p = ggplot() + scale_x_continuous(breaks=0:9) + theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank(),axis.ticks.y=element_blank(),axis.text.y=element_blank(),panel.margin=unit(0,"cm"))
+  p = ggplot() + theme(panel.grid.major=element_blank(),panel.grid.minor=element_blank(),axis.ticks.y=element_blank(),axis.text.y=element_blank(),panel.margin=unit(0,"cm"))
 
 
   add.area = function(p,df,c1,c2){
@@ -80,18 +78,39 @@ plot.bands = function(df,num.steps){
 
   print(p)
   p
-  #print(df)
-  #print(ggplot(df,aes(x,abs(y),fill=factor(splitter))) +geom_area())
 }
-df = melt(EuStockMarkets)
-df = df[df$Var2=="DAX" & df$Var1 < 250,]
-df$diff = c(diff(df$value),0)
-df$diff_perc = df$diff/df$value*100
-df2 = df[abs(df$diff_perc) < 1.3,]
-df_eu = f(data.frame(x=1:nrow(df2),y=df2$diff_perc,splitter=1))
 
+smoothme = function(df,span=0.2,interval=1){
+  l = loess("y ~ x",data.frame(x=1:nrow(df),y=df$value),span=0.1)
+  tmp = data.frame(x=seq(1,nrow(df),interval),y=predict(l,newdata=data.frame(x=seq(1,nrow(df),interval))), splitter=1)
+  tmp
+}
+
+eu = function(){
+  df = melt(EuStockMarkets)
+  df = df[df$Var2=="DAX" & df$Var1 < 200,]
+  df
+}
+
+calc.diff = function(tmp){
+  df = data.frame(x=1:nrow(tmp), y=c(diff(tmp$y),0))
+  df$diff_perc = df$y/tmp$y*100
+  df
+}
+
+df = calc.diff(smoothme(eu()))
+df2 = df[abs(df$diff_perc) < 1.3,]
+tmp2 = data.frame(x=1:nrow(df2),y=df2$diff_perc,splitter=1)
+
+df_eu = f(tmp2)
+#plot(df_eu$x,df_eu$y,type="l")
+#plot(tmp2$x,tmp2$y,type="l")
 #plot.bands(df3,num.steps)
-plot.bands(df_eu,num.steps)
+#b = plot.bands(df_eu,num.steps)
+#b = plot.bands(df3,num.steps)
+
+df3 = f(data.frame(x=1:10,y=rnorm(10),splitter=1))
+df3 = f(data.frame(x=0:9,y=c(0.5,0.1627684,0.3072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1))
 
 #print(p + geom_line(data=df3,aes(x,abs(y),group=splitter)))
 
