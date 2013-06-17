@@ -165,7 +165,7 @@ calc.diff = function(tmp){
 }
 
 e = eu()
-#e = ddply(e,.(group),spline.smoother,span=0.05,interval=.1,n=20)
+e = ddply(e,.(group),smoothme,span=0.15,interval=.1,n=20)
 df = ddply(e,.(group),calc.diff)
 df2 = df[abs(df$diff_perc) < 1.0,]
 tmp2 = df2
