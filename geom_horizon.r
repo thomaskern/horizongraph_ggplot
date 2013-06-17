@@ -166,7 +166,7 @@ calc.diff = function(tmp){
 #b = plot.bands(df3,num.steps)
 
 df = data.frame(group=rep(c("A","B","C"),each=10), x=0:9,y=c(1.2,1.8627684,0.1,-1,-0.8324571,-0.0061331,-0.8056517,0.1085939,0.6393061,-0.9098858,0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,-0.6393061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.5324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1) 
-#df = ddply(df,.(group),spline.smoother,span=.3,interval=.01,n=5)
+df = ddply(df,.(group),smoothme,span=.2,interval=.1,n=8)
 df5 = ddply(df,.(group),f,num.steps=num.steps)
 #print(df5)
 p = plot.bands(df5,num.steps)
