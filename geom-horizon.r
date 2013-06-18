@@ -12,7 +12,7 @@ GeomHorizon <- proto(Geom,{
                                          c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
 
                      objname <- "horizon"
-
+                     default_aes <- function(.) aes(colour="#000000", fill="#000000", size=0.5, linetype=1, alpha = NA)
                      default_stat <- function(.) StatIdentity
                      default_aes <- function(.) aes(colour=NA, fill="#000000", size=0.5, linetype=1, alpha = NA)
                      required_aes <- c("group","x", "ymin","ymax")
@@ -101,15 +101,14 @@ GeomHorizon <- proto(Geom,{
                        ret
                      }
 
-                     draw <- function(.,data,scales, coordinates, na.rm=FALSE,...){
+                     draw <- function(.,data, scales,coordinates,...){
                        add.line = function(y)
-                         GeomHline$draw(data.frame(yend=y,y=y,size=0.5,linetype=1,colour="#cccccc",alpha=1),scales,coordinates)
-                       add.ribbon = function(g)
+                         GeomHline$draw(data.frame(yintercept=y,PANEL=1,group=1,yend=y,y=y,size=1,linetype=1,colour="BLACK",alpha=1,stringsAsFactors=FALSE),scales,coordinates,...)
+                       add.ribbon <- function(g)
                          GeomRibbon$draw(data[data$counter == g,],scales,coordinates,...)
 
-                       p = Reduce(function(x,xs){c(x,list(add.ribbon(xs)))},unique(data$counter),list(add.line(.$grounds)))
-
+                       p = Reduce(function(x,xs){c(x,list(add.ribbon(xs)))},unique(data$counter),list())
+                       p = c(list(add.line(.$grounds)),p)
                        ggname(.$my_name(), do.call(grobTree,p))
                      }
                   })
-
