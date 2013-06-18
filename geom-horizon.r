@@ -103,7 +103,7 @@ GeomHorizon <- proto(Geom,{
 
                      draw <- function(.,data,scales, coordinates, na.rm=FALSE,...){
                        add.line = function(y)
-                         GeomHline$draw(data.frame(yend=y,y=y,size=0.5,linetype=1,colour="black",alpha=1),scales,coordinates)
+                         GeomHline$draw(data.frame(yend=y,y=y,size=0.5,linetype=1,colour="#cccccc",alpha=1),scales,coordinates)
                        add.ribbon = function(g)
                          GeomRibbon$draw(data[data$counter == g,],scales,coordinates,...)
 
