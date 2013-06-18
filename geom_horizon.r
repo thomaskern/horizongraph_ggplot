@@ -53,16 +53,13 @@ padding = function(x,xs,nrows){
   insert.zero("+") #after current position
 }
 
-colors = c("#B21212","#FF0000","#0971B2","#1485CC")
+band.colors = list(c("#590000","#003BF7"),c("#B21212","#FF0000","#0971B2","#1485CC"),c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
 num.steps = 2
-
-#colors = c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3")
 #num.steps = 3
-
-#colors = c("#590000","#003BF7")
 #num.steps = 1
 
-colors2 =LETTERS[1:length(colors)]
+colors = band.colors[[num.steps]]
+colors2 =LETTERS[1:(num.steps*2)]
 
 plot.bands = function(df.all,num.steps){
   step = steps(df.all$y,num.steps)*1.00000000001
@@ -171,7 +168,6 @@ df2 = df[abs(df$diff_perc) < 1.0,]
 tmp2 = df2
 tmp2$y = tmp2$diff_perc
 df_eu = ddply(tmp2, .(group),f,num.steps=num.steps)
-print(head(df_eu))
 b = plot.bands(df_eu,num.steps)
 print(b)
 
