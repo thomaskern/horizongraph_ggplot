@@ -16,11 +16,14 @@ cut.into.parts = function(vals,i){
 }
 
 f = function(df,num.steps){
+  df$splitter = 1
   df2 = df
   df2$splitter = 2
   df[df$y > 0,"y"] = 0
   df2[df2$y < 0,"y"] = 0
   #print(head(df2))
+  print(names(df))
+  print(names(df2))
   rbind(df,df2)
 }
 
@@ -120,8 +123,8 @@ plot.bands = function(df.all,num.steps){
   p = p + scale_fill_manual(values=colors,breaks=colors2,
                             labels=c(labels(df.all$y,-1),labels(df.all$y,1)))
 
-  p = p + 
-    scale_y_continuous(breaks=grounds+step*1.05/2,labels=levels(df$group)) 
+  #p = p + 
+    #scale_y_continuous(breaks=grounds+step*1.05/2,labels=levels(df$group)) 
     #scale_x_continuous(breaks=seq(df.all[df.all$group==levels(df.all$group)[1] & df.all$splitter == 1,"x"])-1)
 
   p = p + theme(legend.position="None")
@@ -134,7 +137,7 @@ create.df = function(df,newy,newx){
 
 smoothme = function(df,span=0.4,interval=1,...){
   l = loess("y ~ x",data.frame(x=df$x,y=df$y),span=span)
-  newx = seq(1,nrow(df),interval)
+  newx = seq(range(df$x)[1],range(df$x)[2],interval)
   create.df(df,predict(l,newdata=data.frame(x=newx)),newx)
 }
 
@@ -153,6 +156,7 @@ eu = function(){
   df$y = as.numeric(df$y)
   df$group = factor(df$group)
   df$splitter = 1
+  df = ddply(df,.(group),calc.diff)
   df
 }
 
@@ -162,14 +166,14 @@ calc.diff = function(tmp){
 }
 
 e = eu()
-e = ddply(e,.(group),smoothme,span=0.15,interval=.1,n=20)
-df = ddply(e,.(group),calc.diff)
-df2 = df[abs(df$diff_perc) < 1.0,]
+#e = ddply(e,.(group),smoothme,span=0.15,interval=.1,n=20)
+df2 = e[abs(e$diff_perc) < 1.0,]
 tmp2 = df2
 tmp2$y = tmp2$diff_perc
+
 df_eu = ddply(tmp2, .(group),f,num.steps=num.steps)
-b = plot.bands(df_eu,num.steps)
-print(b)
+#b = plot.bands(df_eu,num.steps)
+#print(b)
 
 #b = plot.bands(df3,num.steps)
 
@@ -180,13 +184,13 @@ print(b)
 #print(p)
 #return
 
-#df3 = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1)
-#df3 = ddply(df3,.(group),f,num.steps=num.steps)
+df3 = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1)
+df3 = ddply(df3,.(group),f,num.steps=num.steps)
 #print(df3)
-#p = plot.bands(df3,num.steps)
-#print(p)
+p = plot.bands(df3,num.steps)
+print(p)
 
-#df3 = f(data.frame(group=rep(c("A","B"),each=10), x=0:9,y=c(0.5,0.1627684,0.3072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1))
+df4 = data.frame(group=rep(c("A","B"),each=10), x=0:9,y=c(0.5,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1)
 #print(df3)
 #plot.bands(df3,num.steps)
 
