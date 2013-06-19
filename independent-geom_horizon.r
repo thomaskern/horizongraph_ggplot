@@ -73,13 +73,13 @@ plot.bands = function(df.all,num.bands,colors){
   band.colors = list(c("#590000","#003BF7"),c("#B21212","#FF0000","#0971B2","#1485CC"),c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
   colors2 =LETTERS[1:(num.bands*2)]
   colors = set.color(num.bands,colors,band.colors)
-
   step = steps(df.all$y,num.bands)*1.00000000001
 
   p = ggplot() + theme(panel.grid.major=element_blank(),
                        panel.grid.minor=element_blank(),
                        axis.ticks.y=element_blank(),
-                       panel.background  = element_rect(fill = "white", colour = NA))
+                       panel.background  = element_rect(fill = "white", colour = NA),
+                       legend.position="None")
 
   add.area = function(p,df,c1,c2){
     df$fill = ifelse(df$splitter==1,c1,c2)
@@ -121,16 +121,13 @@ plot.bands = function(df.all,num.bands,colors){
       p = add.area(p,df2,colors2[length(colors2)/2+1-i],colors2[length(colors2)+1-i])
     }
     counter = counter + 1
-    p = p + geom_hline(yintercept=ground)
   }
 
-  p = p + scale_fill_manual(values=colors,breaks=colors2,
+  p = p + scale_fill_manual("Ranges",values=colors,breaks=colors2,
                             labels=c(labels(df.all$y,-1),labels(df.all$y,1)))
-
   p = p + scale_y_continuous(breaks=grounds+step*1.05/2,labels=y_labels) + scale_x_continuous(breaks=NULL)
-
-  p = p + theme(legend.position="None")
-  p + geom_hline(yintercept=grounds[length(grounds)]+step)
+  p = p + geom_hline(yintercept=c(grounds,grounds[length(grounds)]+step))
+  p
 }
 
 create.df = function(df,newy,newx){
@@ -170,15 +167,6 @@ smooth.data <- function(df,smoothing,loess.span,loess.interval,spline.n){
   df
 }
 
-reparameterise = function(data,mapping){
-  cols = sapply(seq(mapping), function(x) as.character(mapping[[x]]),USE.NAMES=F)
-  df = data[,cols]
-  names(df) = new.names.mapping(mapping)
-  df
-}
-
-new.names.mapping = function(mapping) sapply(seq(mapping), function(x) as.character(names(mapping[x])[[1]]),USE.NAMES=F)
-
 check_mapping = function(mapping){
   missing_aes <- setdiff(c("x","y","group"), new.names.mapping(mapping))
   if (length(missing_aes) == 0) return()
@@ -198,8 +186,7 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
                         calculate.diff=FALSE,
                         loess.span=0.5,loess.intervall=1,spline.n=3*nrow(data)){
   check_mapping(mapping)
-  plot.bands(ddply(smooth.data(calculate.diff(reparameterise(data,
-                                                             mapping),
+  plot.bands(ddply(smooth.data(calculate.diff(rename(data,mapping),
                                               calculate.diff),
                                smoothing,
                                loess.span,
@@ -212,13 +199,13 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
              band.colors)
 }
 
-p = plot_horizon(with(eu(),eu()[x <= 200,]),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
-print(p)
+#p = plot_horizon(with(eu(),eu()[x <= 200,]),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
+#print(p)
 
 df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
-p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
+p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40) 
 print(p)
 
-df = data.frame(group=factor(rep(c("A","B"),each=10),levels=c("B","A")), x=0:9,y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
-p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
-print(p)
+#df = data.frame(group=factor(rep(c("A","B"),each=10),levels=c("B","A")), x=0:9,y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+#p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
+#print(p)
