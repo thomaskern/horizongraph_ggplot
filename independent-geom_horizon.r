@@ -3,11 +3,11 @@ library(grid)
 library(ggplot2)
 library(plyr)
 library(reshape2)
+library(RColorBrewer)
 
 steps = function(y,i){
   max(y)/i
 }
-
 
 cut.into.parts = function(vals,i){
   a = abs(vals)
@@ -15,15 +15,14 @@ cut.into.parts = function(vals,i){
   cut(a,r,include.lowest=TRUE)
 }
 
-f = function(df,num.steps){
+prep = function(df,num.bands){
+  if(!is.factor(df$group))
+    df$group = factor(df$group)
   df$splitter = 1
   df2 = df
   df2$splitter = 2
   df[df$y > 0,"y"] = 0
   df2[df2$y < 0,"y"] = 0
-  #print(head(df2))
-  print(names(df))
-  print(names(df2))
   rbind(df,df2)
 }
 
@@ -38,9 +37,9 @@ padding = function(x,xs,nrows){
   }
 
   create.entry = function(mod) list(x[xs,"group"],
-                           get(mod)(pos,ifelse(mod=="-",interval.x.axis(x,xs,mod)*0.98,interval.x.axis(x,xs,mod))),
-                           0,
-                           x[xs,"splitter"]                           )
+                                    get(mod)(pos,ifelse(mod=="-",interval.x.axis(x,xs,mod)*0.98,interval.x.axis(x,xs,mod))),
+                                    0,
+                                    x[xs,"splitter"])
 
   insert.zero = function(mod){
     if(x[get(mod)(xs,1),"y"] != 0 && 
@@ -56,16 +55,27 @@ padding = function(x,xs,nrows){
   insert.zero("+") #after current position
 }
 
-band.colors = list(c("#590000","#003BF7"),c("#B21212","#FF0000","#0971B2","#1485CC"),c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
-num.steps = 2
-#num.steps = 3
-#num.steps = 1
+set.color <- function(num.bands, user.colors, band.colors){
+  if(!is.null(user.colors)){
+    if(length(user.colors) == 2*num.bands)
+      user.colors
+    else
+      stop(paste("You have provided the wrong number of colors. You need to provide ",2*num.bands,"colors, not ",length(colors)))
+  }else{
+    if(length(band.colors) < num.bands){
+      c(rev(brewer.pal(num.bands,"Reds")),rev(brewer.pal(num.bands,"Blues")))
+    }else
+      band.colors[[num.bands]]
+  }
+}
 
-colors = band.colors[[num.steps]]
-colors2 =LETTERS[1:(num.steps*2)]
+plot.bands = function(df.all,num.bands,colors){
+  band.colors = list(c("#590000","#003BF7"),c("#B21212","#FF0000","#0971B2","#1485CC"),c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
+  colors2 =LETTERS[1:(num.bands*2)]
+  colors = set.color(num.bands,colors,band.colors)
 
-plot.bands = function(df.all,num.steps){
-  step = steps(df.all$y,num.steps)*1.00000000001
+  step = steps(df.all$y,num.bands)*1.00000000001
+
   p = ggplot() + theme(panel.grid.major=element_blank(),
                        panel.grid.minor=element_blank(),
                        axis.ticks.y=element_blank(),
@@ -76,87 +86,75 @@ plot.bands = function(df.all,num.steps){
     p + geom_ribbon(aes(x,ymin=ymin,ymax=ymax,fill=fill),df)
   }
 
+  labels = function(vals,side){
+    if(num.bands == 1){
+      ifelse(side == 1, paste0("(0,",max(abs(vals)),"]"),paste0("[-",max(abs(vals)),",0]"))
+    }else
+      levels(cut(side*abs(df.all$y),num.bands))
+  }
+
   grounds = c()
   counter = 0
-  for(level in levels(df.all$group)){
+  y_labels = rev(levels(df.all$group))
+  for(level in y_labels){
     output = ifelse(level=="A",T,F)
     df = df.all[df.all$group==level,]
     ground = counter * step
     grounds = c(grounds,ground)
 
-    for(i in 1:num.steps){
-      df5 = df
-      df5$y = abs(df5$y)
+    for(i in 1:num.bands){
+      df2 = df
+      df2$y = abs(df2$y)
 
-      current_bottom_bottom =  step * (i-1)
-      current_bottom_top =  step * (i)
-      current_top_bottom = step * (i)
-      current_top_top = step * (i+1)
+      current_bottom =  step * (i-1)
+      current_middle =  step * (i)
+      current_top = step * (i+1)
 
-      #print(step)
-      #if(length(df5[df5$y < current_bottom_bottom,"y"]) == 0)
-        #print(df5)
+      df2[df2$y < current_bottom,"y"] = 0
+      df2[df2$y >= current_bottom & df2$y < current_middle,"y"] = df2[df2$y >= current_bottom & df2$y < current_middle,"y"] - current_bottom
+      df2[df2$y > current_middle,"y"] = step
+      row.names(df2) = 1:nrow(df2)
+      df2 = Reduce(function(x,xs){padding(x,xs,nrow(df2))},which(df2$y == 0),df2)
 
-      df5[df5$y < current_bottom_bottom,"y"] = 0
-      df5[df5$y >= current_bottom_bottom & df5$y < current_bottom_top ,"y"] = df5[df5$y >= current_bottom_bottom & df5$y < current_bottom_top ,"y"] - current_bottom_bottom
-      df5[df5$y > current_top_bottom,"y"] = step
-      row.names(df5) = 1:nrow(df5)
-      df5 = Reduce(function(x,xs){padding(x,xs,nrow(df5))},which(df5$y == 0),df5)
-
-      df5$ymin = ground
-      df5$ymax = abs(df5$y) + ground
-      #print(df5)
-      p = add.area(p,df5,colors2[length(colors2)/2+1-i],colors2[length(colors2)+1-i])
+      df2$ymin = ground
+      df2$ymax = abs(df2$y) + ground
+      p = add.area(p,df2,colors2[length(colors2)/2+1-i],colors2[length(colors2)+1-i])
     }
     counter = counter + 1
     p = p + geom_hline(yintercept=ground)
-    #break
-  }
-
-  labels = function(vals,side){
-    if(num.steps == 1){
-      ifelse(side == 1, paste0("(0,",max(abs(vals)),"]"),paste0("[-",max(abs(vals)),",0]"))
-    }else
-      levels(cut(side*abs(df.all$y),num.steps))
   }
 
   p = p + scale_fill_manual(values=colors,breaks=colors2,
                             labels=c(labels(df.all$y,-1),labels(df.all$y,1)))
 
-  #p = p + 
-    #scale_y_continuous(breaks=grounds+step*1.05/2,labels=levels(df$group)) 
-    #scale_x_continuous(breaks=seq(df.all[df.all$group==levels(df.all$group)[1] & df.all$splitter == 1,"x"])-1)
+  p = p + scale_y_continuous(breaks=grounds+step*1.05/2,labels=y_labels) + scale_x_continuous(breaks=NULL)
 
   p = p + theme(legend.position="None")
   p + geom_hline(yintercept=grounds[length(grounds)]+step)
 }
 
 create.df = function(df,newy,newx){
-   data.frame(x=newx,y=newy,group=df$group[1],splitter=df$splitter[1])
+  data.frame(x=newx,y=newy,group=df$group[1])
 }
 
-smoothme = function(df,span=0.4,interval=1,...){
+smooth.loess = function(df,span=0.4,interval=1,...){
   l = loess("y ~ x",data.frame(x=df$x,y=df$y),span=span)
   newx = seq(range(df$x)[1],range(df$x)[2],interval)
   create.df(df,predict(l,newdata=data.frame(x=newx)),newx)
 }
 
-spline.smoother = function(df,n=3*nrow(df),...){
+smooth.spline = function(df,n,...){
   l = spline(df$x,df$y,n=n)
   create.df(df,l$y,l$x)
 }
 
 eu = function(){
   df = melt(EuStockMarkets)
-  #df = df[(df$Var2=="DAX" | df$Var2 == "SMI") & df$Var1 < 200,]
-  df = df[df$Var1 < 200,]
   row.names(df) = 1:nrow(df)
   names(df) = c("x","group","y")
   df$x = as.numeric(df$x)
   df$y = as.numeric(df$y)
   df$group = factor(df$group)
-  df$splitter = 1
-  df = ddply(df,.(group),calc.diff)
   df
 }
 
@@ -165,40 +163,62 @@ calc.diff = function(tmp){
   transform(tmp,diff_perc=diff/y*100)
 }
 
-e = eu()
-#e = ddply(e,.(group),smoothme,span=0.15,interval=.1,n=20)
-df2 = e[abs(e$diff_perc) < 1.0,]
-tmp2 = df2
-tmp2$y = tmp2$diff_perc
+smooth.data <- function(df,smoothing,loess.span,loess.interval,spline.n){
+  if(!is.null(smoothing) && exists(smoothing)){
+    df = ddply(df,.(group),get(paste0("smooth.",smoothing)),span=loess.span,interval=loess.interval,n=spline.n)
+  }
+  df
+}
 
-df_eu = ddply(tmp2, .(group),f,num.steps=num.steps)
-#b = plot.bands(df_eu,num.steps)
-#print(b)
+reparameterise = function(data,mapping){
+  cols = sapply(seq(mapping), function(x) as.character(mapping[[x]]),USE.NAMES=F)
+  df = data[,cols]
+  names(df) = new.names.mapping(mapping)
+  df
+}
 
-#b = plot.bands(df3,num.steps)
+new.names.mapping = function(mapping) sapply(seq(mapping), function(x) as.character(names(mapping[x])[[1]]),USE.NAMES=F)
 
-#df = data.frame(group=rep(c("A","B","C"),each=10), x=0:9,y=c(1.2,1.8627684,0.1,-1,-0.8324571,-0.0061331,-0.8056517,0.1085939,0.6393061,-0.9098858,0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,-0.6393061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.5324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1) 
-##df = ddply(df,.(group),smoothme,span=.2,interval=.1,n=8)
-#df5 = ddply(df,.(group),f,num.steps=num.steps)
-#p = plot.bands(df5,num.steps)
-#print(p)
-#return
+check_mapping = function(mapping){
+  missing_aes <- setdiff(c("x","y","group"), new.names.mapping(mapping))
+  if (length(missing_aes) == 0) return()
 
-df3 = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1)
-df3 = ddply(df3,.(group),f,num.steps=num.steps)
-#print(df3)
-p = plot.bands(df3,num.steps)
+  stop("horizon requires the following missing aesthetics: ", paste(missing_aes, collapse=", "), call. = FALSE)
+}
+
+calculate.diff = function(df,to.calculate){
+  if(to.calculate){
+    df = ddply(df,.(group),calc.diff)
+    df$y = df$diff_perc
+  }
+  df
+}
+
+plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,band.colors=NULL,
+                        calculate.diff=FALSE,
+                        loess.span=0.5,loess.intervall=1,spline.n=3*nrow(data)){
+  check_mapping(mapping)
+  plot.bands(ddply(smooth.data(calculate.diff(reparameterise(data,
+                                                             mapping),
+                                              calculate.diff),
+                               smoothing,
+                               loess.span,
+                               loess.intervall,
+                               spline.n),
+                   .(group),
+                   prep,
+                   num.bands=num.bands),
+             num.bands,
+             band.colors)
+}
+
+p = plot_horizon(with(eu(),eu()[x <= 200,]),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
 print(p)
 
-df4 = data.frame(group=rep(c("A","B"),each=10), x=0:9,y=c(0.5,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858),splitter=1)
-#print(df3)
-#plot.bands(df3,num.steps)
+df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
+print(p)
 
-#print(p + geom_line(data=df3,aes(x,abs(y),group=splitter)))
-#print(p)
-#print(df4)
-
-#test_that("asdfasdf",{
-#expect_equal(nrow(df4),20+3+3)
-#expect_equal(0.0,df4[df4$splitter == 1 & df4$x==3.5,"y"])
-#})
+df = data.frame(group=factor(rep(c("A","B"),each=10),levels=c("B","A")), x=0:9,y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
+print(p)
