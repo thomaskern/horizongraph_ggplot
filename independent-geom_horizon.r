@@ -184,7 +184,7 @@ calculate.diff = function(df,to.calculate){
 
 plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,band.colors=NULL,
                         calculate.diff=FALSE,
-                        loess.span=0.5,loess.intervall=1,spline.n=3*nrow(data)){
+                        loess.span=0.5,loess.interval=1,spline.n=3*nrow(data)){
   check_mapping(mapping)
   plot.bands(ddply(smooth.data(calculate.diff(rename(data,mapping),
                                               calculate.diff),
