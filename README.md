@@ -2,7 +2,7 @@
 
 Prototype of a horizon graph implementation based on ggplot2.
 
-The idea came up by Saito and Heer. See 2009's CHI paper: `Sizing the Horizon: The Effects of Chart Size and Layering on the Graphical Perception of Time Series Visualizations` by Heer et al.
+The idea came up by Saito and Heer. See 2009's CHI paper [`Sizing the Horizon: The Effects of Chart Size and Layering on the Graphical Perception of Time Series Visualizations`](http://vis.stanford.edu/files/2009-TimeSeries-CHI.pdf) by Heer, Kong and Agrawala as well as 2005's Infovis paper [`Two-Tone Pseudo-Coloring: Compact Visualization for One-Dimensional Data. Proc.`](https://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=1532144) by Saito et al.
 
 A smoothed horizon graph of the first 200 days of the `EuStockMarkets` dataset:
 
@@ -36,8 +36,12 @@ For the `independent-geom-horizon.r` file, use a `data.frame` of your liking and
     plot_horizon(df,aes(x,y,group=group),2, smoothing="spline", spline.n=40)
 
 
-`eu()` is a function melting and adjusting the `EuStockMarkets` dataset to be used with ggplot2. Example of `plot_horizon`:
+`eu()` is a function melting and adjusting the `EuStockMarkets` dataset to be used with ggplot2. Using it with `plot_horizon`:
 
     plot_horizon(with(eu(),eu()[x <= 200,]), aes(x,y,group=group), num.steps=2, smoothing="loess", loess.span=0.2, loess.interval=0.1, calculate.diff=TRUE)
     
     plot_horizon(with(eu(),eu()[x <= 200,]), aes(x,y,group=group), num.steps=2, smoothing="loess", loess.span=0.2, loess.interval=0.1)
+
+## To be done
+
+Making a custom `geom` out of the standalone function proves difficult since changing the y-axis labels from within a `geom` is not allowed. Script `geom-horizon.r` provides the first draft of the custom `geom`.

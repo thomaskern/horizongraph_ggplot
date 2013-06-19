@@ -70,7 +70,10 @@ set.color <- function(num.bands, user.colors, band.colors){
 }
 
 plot.bands = function(df.all,num.bands,colors){
-  band.colors = list(c("#590000","#003BF7"),c("#B21212","#FF0000","#0971B2","#1485CC"),c("#590000","#CC3730","#CC716D","#003BF7","#B8BCFB","#CCCEE3"))
+  band.colors = list(c("#590000","#003BF7"),
+                     #c("#B21212","#FF0000","#0971B2","#1485CC"),
+                     c("#B11019","#F5AA9C","#1F61B2","#A2C8DB"),
+                     c("#B11019","#DE2F35","#F5AA9C","#1F61B2","#4E8AC6","#A2C8DB"))
   colors2 =LETTERS[1:(num.bands*2)]
   colors = set.color(num.bands,colors,band.colors)
   step = steps(df.all$y,num.bands)*1.00000000001
