@@ -190,7 +190,7 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
                                               calculate.diff),
                                smoothing,
                                loess.span,
-                               loess.intervall,
+                               loess.interval,
                                spline.n),
                    .(group),
                    prep,
