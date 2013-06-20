@@ -15,7 +15,7 @@ cut.into.parts = function(vals,i){
   cut(a,r,include.lowest=TRUE)
 }
 
-prep = function(df,num.bands){
+data.prep = function(df,num.bands){
   if(!is.factor(df$group))
     df$group = factor(df$group)
   df$splitter = 1
@@ -29,8 +29,6 @@ prep = function(df,num.bands){
 fac = function(x,pos,col) ifelse(pos > 0,as.character(x[pos,col]),as.character(x[pos+1,col]))
 
 padding = function(x,xs,nrows){
-  pos = x[xs,]$x
-
   interval.x.axis = function(x,xs,mod){
     ret = abs(x[get(mod)(xs,1),"x"]-x[xs,"x"])/2
     ret
@@ -45,12 +43,12 @@ padding = function(x,xs,nrows){
     if(x[get(mod)(xs,1),"y"] != 0 && 
        get(mod)(xs,1) < nrows && 
        get(mod)(xs,1) > 0 &&
-       x[get(mod)(xs,1),"splitter"] == x[xs,"splitter"]){
+       x[get(mod)(xs,1),"splitter"] == x[xs,"splitter"])
       x[nrow(x) + 1,c("group","x","y","splitter")] = create.entry(mod)
-    }
     x
   }
 
+  pos = x[xs,]$x
   x = insert.zero("-") #before current position
   insert.zero("+") #after current position
 }
@@ -71,12 +69,15 @@ set.color <- function(num.bands, user.colors, band.colors){
 
 plot.bands = function(df.all,num.bands,colors){
   band.colors = list(c("#590000","#003BF7"),
-                     #c("#B21212","#FF0000","#0971B2","#1485CC"),
                      c("#B11019","#F5AA9C","#1F61B2","#A2C8DB"),
                      c("#B11019","#DE2F35","#F5AA9C","#1F61B2","#4E8AC6","#A2C8DB"))
   colors2 =LETTERS[1:(num.bands*2)]
   colors = set.color(num.bands,colors,band.colors)
   step = steps(df.all$y,num.bands)*1.00000000001
+
+  grounds = c()
+  counter = 0
+  y_labels = rev(levels(df.all$group))
 
   p = ggplot() + theme(panel.grid.major=element_blank(),
                        panel.grid.minor=element_blank(),
@@ -97,12 +98,8 @@ plot.bands = function(df.all,num.bands,colors){
       levels(cut(side*abs(df.all$y),num.bands))
   }
 
-  grounds = c()
-  counter = 0
-  y_labels = rev(levels(df.all$group))
   for(level in y_labels){
-    output = ifelse(level=="A",T,F)
-    df = df.all[df.all$group==level,]
+    df = subset(df.all,group==level)
     ground = counter * step
     grounds = c(grounds,ground)
 
@@ -115,13 +112,13 @@ plot.bands = function(df.all,num.bands,colors){
       current_top = step * (i+1)
 
       df2[df2$y < current_bottom,"y"] = 0
-      df2[df2$y >= current_bottom & df2$y < current_middle,"y"] = df2[df2$y >= current_bottom & df2$y < current_middle,"y"] - current_bottom
+      df2[df2$y >= current_bottom & df2$y < current_middle,"y"] = subset(df2,y >= current_bottom & y < current_middle,"y") - current_bottom
       df2[df2$y > current_middle,"y"] = step
-      row.names(df2) = 1:nrow(df2)
-      df2 = Reduce(function(x,xs){padding(x,xs,nrow(df2))},which(df2$y == 0),df2)
+      row.names(df2) = seq(df2$x)
+      df2 = Reduce(function(x,xs) padding(x,xs,nrow(df2)),which(df2$y == 0),df2)
 
       df2$ymin = ground
-      df2$ymax = abs(df2$y) + ground
+      df2$ymax = df2$y + ground
       p = add.area(p,df2,colors2[length(colors2)/2+1-i],colors2[length(colors2)+1-i])
     }
     counter = counter + 1
@@ -174,7 +171,6 @@ smooth.data <- function(df,smoothing,loess.span,loess.interval,spline.n){
 check_mapping = function(mapping){
   missing_aes <- setdiff(c("x","y","group"), new.names.mapping(mapping))
   if (length(missing_aes) == 0) return()
-
   stop("horizon requires the following missing aesthetics: ", paste(missing_aes, collapse=", "), call. = FALSE)
 }
 
@@ -197,7 +193,7 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
                                loess.interval,
                                spline.n),
                    .(group),
-                   prep,
+                   data.prep,
                    num.bands=num.bands),
              num.bands,
              band.colors)
