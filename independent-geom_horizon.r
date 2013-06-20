@@ -82,7 +82,8 @@ plot.bands = function(df.all,num.bands,colors){
                        panel.grid.minor=element_blank(),
                        axis.ticks.y=element_blank(),
                        panel.background  = element_rect(fill = "white", colour = NA),
-                       legend.position="None")
+                       legend.position="None") +
+                  labs(x="Time")
 
   add.area = function(p,df,c1,c2){
     df$fill = ifelse(df$splitter==1,c1,c2)
@@ -205,8 +206,12 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
 #p = plot_horizon(with(eu(),eu()[x <= 200,]),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
 #print(p)
 
-df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
-p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40) 
+#df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+#p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40) 
+#print(p)
+
+df = data.frame(group=factor(c(rep("A",9), rep("B",8))), x=c(0:8,2:9),y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1,0.3085939,-0.9098858,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+p = plot_horizon(df,aes(x,y,group=group),3)
 print(p)
 
 #df = data.frame(group=factor(rep(c("A","B"),each=10),levels=c("B","A")), x=0:9,y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
