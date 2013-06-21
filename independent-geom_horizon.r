@@ -1,12 +1,12 @@
-library(testthat)
+rm(list=ls())
 library(grid)
 library(ggplot2)
 library(plyr)
 library(reshape2)
 library(RColorBrewer)
 
-steps = function(y,i){
-  max(y)/i
+steps = function(y,i,padding=1.00000000001){
+  max(y)/i*padding
 }
 
 cut.into.parts = function(vals,i){
@@ -67,68 +67,74 @@ set.color <- function(num.bands, user.colors, band.colors){
   }
 }
 
-plot.bands = function(df.all,num.bands,colors){
-  band.colors = list(c("#590000","#003BF7"),
-                     c("#B11019","#F5AA9C","#1F61B2","#A2C8DB"),
-                     c("#B11019","#DE2F35","#F5AA9C","#1F61B2","#4E8AC6","#A2C8DB"))
-  colors2 =LETTERS[1:(num.bands*2)]
-  colors = set.color(num.bands,colors,band.colors)
-  step = steps(df.all$y,num.bands)*1.00000000001
+default.band.colors = function(){
+  list(c("#590000","#003BF7"),
+       c("#B11019","#F5AA9C","#1F61B2","#A2C8DB"),
+       c("#B11019","#DE2F35","#F5AA9C","#1F61B2","#4E8AC6","#A2C8DB"))
+}
 
-  grounds = c()
-  counter = 0
-  y_labels = rev(levels(df.all$group))
+get.colors = function(user.colors,num.bands) set.color(num.bands,user.colors,default.band.colors())
 
-  p = ggplot() + theme(panel.grid.major=element_blank(),
-                       panel.grid.minor=element_blank(),
-                       axis.ticks.y=element_blank(),
-                       panel.background  = element_rect(fill = "white", colour = NA),
-                       legend.position="None") +
-                  labs(x="Time")
-
-  add.area = function(p,df,c1,c2){
-    df$fill = ifelse(df$splitter==1,c1,c2)
-    p + geom_ribbon(aes(x,ymin=ymin,ymax=ymax,fill=fill),df)
-  }
-
+create.blank.ggplot = function(y,colors,colors2,num.bands,grounds,y_labels){
   labels = function(vals,side){
     if(num.bands == 1){
       ifelse(side == 1, paste0("(0,",max(abs(vals)),"]"),paste0("[-",max(abs(vals)),",0]"))
     }else
-      levels(cut(side*abs(df.all$y),num.bands))
+      levels(cut(side*abs(y),num.bands))
   }
 
-  for(level in y_labels){
-    df = subset(df.all,group==level)
-    ground = counter * step
-    grounds = c(grounds,ground)
+  p = ggplot() +
+  theme(panel.grid.major=element_blank(),
+        panel.grid.minor=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.background = element_rect(fill = "white", colour = NA),
+        legend.position="None") + 
+  labs(x="Time") + scale_fill_manual("Ranges",values=colors,breaks=colors2,
+                                   labels=c(labels(y,-1),labels(y,1))) + scale_x_continuous(breaks=NULL)
+}
 
-    for(i in 1:num.bands){
-      df2 = df
-      df2$y = abs(df2$y)
+counter = function(vals,start=0) start:(length(vals)-(1-start))
 
-      current_bottom =  step * (i-1)
-      current_middle =  step * (i)
-      current_top = step * (i+1)
+plot.bands = function(df.all,num.bands,user.colors){
+  colors2 =LETTERS[1:(num.bands*2)]
+  y_labels = rev(levels(df.all$group))
+  grounds = steps(df.all$y,num.bands) * 0:(length(y_labels)-1)
 
-      df2[df2$y < current_bottom,"y"] = 0
-      df2[df2$y >= current_bottom & df2$y < current_middle,"y"] = subset(df2,y >= current_bottom & y < current_middle,"y") - current_bottom
-      df2[df2$y > current_middle,"y"] = step
-      row.names(df2) = seq(df2$x)
-      df2 = Reduce(function(x,xs) padding(x,xs,nrow(df2)),which(df2$y == 0),df2)
+  create.blank.ggplot(df.all$y,get.colors(user.colors,num.bands),colors2,num.bands,grounds,y_labels) +
+    add.lines.and.labels(grounds,y_labels,steps(df.all$y,num.bands)) +
+    mapply(function(df,counter){
+             lapply(seq(num.bands),function(xs){
+                      add.band(xs, df, counter, steps(df.all$y,num.bands), grounds[counter+1],colors2)})}, 
+           rev(split(df.all,df.all$group)),
+           counter(y_labels))
+}
 
-      df2$ymin = ground
-      df2$ymax = df2$y + ground
-      p = add.area(p,df2,colors2[length(colors2)/2+1-i],colors2[length(colors2)+1-i])
-    }
-    counter = counter + 1
+add.lines.and.labels = function(grounds,y_labels,step)
+  list(geom_hline(yintercept=c(grounds,grounds[length(grounds)]+step)), scale_y_continuous(breaks=grounds+step*1.05/2,labels=y_labels))
+
+adjust.y.values = function(y,step,i){
+  y = abs(y)
+  current_bottom =  step * (i-1)
+  current_middle =  step * (i)
+  current_top = step * (i+1)
+  y[y < current_bottom] = 0
+  y[y >= current_bottom & y < current_middle] = y[y >= current_bottom & y < current_middle] - current_bottom
+  y[y > current_middle] = step
+  y
+}
+
+add.band = function(i,df,counter,step,ground,colors){
+  add.area = function(df,c1,c2){
+    df$fill = ifelse(df$splitter==1,c1,c2)
+    geom_ribbon(aes(x,ymin=ymin,ymax=ymax,fill=fill),df)
   }
 
-  p = p + scale_fill_manual("Ranges",values=colors,breaks=colors2,
-                            labels=c(labels(df.all$y,-1),labels(df.all$y,1)))
-  p = p + scale_y_continuous(breaks=grounds+step*1.05/2,labels=y_labels) + scale_x_continuous(breaks=NULL)
-  p = p + geom_hline(yintercept=c(grounds,grounds[length(grounds)]+step))
-  p
+  df$y = adjust.y.values(df$y,step,i)
+  df = Reduce(function(x,xs) padding(x,xs,nrow(df)),which(df$y == 0),df)
+
+  df$ymin = ground
+  df$ymax = df$y + ground
+  list(add.area(df,colors[length(colors)/2+1-i],colors[length(colors)+1-i]))
 }
 
 create.df = function(df,newy,newx){
@@ -169,7 +175,7 @@ smooth.data <- function(df,smoothing,loess.span,loess.interval,spline.n){
 }
 
 check_mapping = function(mapping){
-  missing_aes <- setdiff(c("x","y","group"), new.names.mapping(mapping))
+  missing_aes <- setdiff(c("x","y","group"), names(mapping))
   if (length(missing_aes) == 0) return()
   stop("horizon requires the following missing aesthetics: ", paste(missing_aes, collapse=", "), call. = FALSE)
 }
@@ -199,16 +205,16 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
              band.colors)
 }
 
-#p = plot_horizon(with(eu(),eu()[x <= 200,]),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
-#print(p)
+p = plot_horizon(subset(eu(),x<=200),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
+print(p)
 
 #df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
 #p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40) 
 #print(p)
 
-df = data.frame(group=factor(c(rep("A",9), rep("B",8))), x=c(0:8,2:9),y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1,0.3085939,-0.9098858,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
-p = plot_horizon(df,aes(x,y,group=group),3)
-print(p)
+#df = data.frame(group=factor(c(rep("A",9), rep("B",8))), x=c(0:8,2:9),y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.1,0.3085939,-0.9098858,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
+#p = plot_horizon(df,aes(x,y,group=group),3)
+#print(p)
 
 #df = data.frame(group=factor(rep(c("A","B"),each=10),levels=c("B","A")), x=0:9,y=c(0.8,0.4627684,0.2072174,-1,-0.8324571,-1.0061331,-0.5056517,0.3085939,0.4383061,-0.9098858,0.3,0.1627684,0.3072174,-0.3,-1.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
 #p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40)
