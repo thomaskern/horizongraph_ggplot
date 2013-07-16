@@ -1,4 +1,3 @@
-rm(list=ls())
 library(grid)
 library(ggplot2)
 library(plyr)
@@ -75,7 +74,7 @@ default.band.colors = function(){
 
 get.colors = function(user.colors,num.bands) set.color(num.bands,user.colors,default.band.colors())
 
-create.blank.ggplot = function(y,colors,colors2,num.bands,grounds,y_labels){
+create.blank.ggplot = function(y,colors,fill.id,num.bands,grounds,y_labels){
   labels = function(vals,side){
     if(num.bands == 1){
       ifelse(side == 1, paste0("(0,",max(abs(vals)),"]"),paste0("[-",max(abs(vals)),",0]"))
@@ -89,22 +88,22 @@ create.blank.ggplot = function(y,colors,colors2,num.bands,grounds,y_labels){
         axis.ticks.y=element_blank(),
         panel.background = element_rect(fill = "white", colour = NA),
         legend.position="None") + 
-  labs(x="Time") + scale_fill_manual("Ranges",values=colors,breaks=colors2,
+  labs(x="Time") + scale_fill_manual("Ranges",values=colors,breaks=fill.id,
                                    labels=c(labels(y,-1),labels(y,1))) + scale_x_continuous(breaks=NULL)
 }
 
 counter = function(vals,start=0) start:(length(vals)-(1-start))
 
 plot.bands = function(df.all,num.bands,user.colors){
-  colors2 =LETTERS[1:(num.bands*2)]
+  fill.id =LETTERS[1:(num.bands*2)]
   y_labels = rev(levels(df.all$group))
   grounds = steps(df.all$y,num.bands) * 0:(length(y_labels)-1)
 
-  create.blank.ggplot(df.all$y,get.colors(user.colors,num.bands),colors2,num.bands,grounds,y_labels) +
+  create.blank.ggplot(df.all$y,get.colors(user.colors,num.bands),fill.id,num.bands,grounds,y_labels) +
     add.lines.and.labels(grounds,y_labels,steps(df.all$y,num.bands)) +
     mapply(function(df,counter){
              lapply(seq(num.bands),function(xs){
-                      add.band(xs, df, counter, steps(df.all$y,num.bands), grounds[counter+1],colors2)})}, 
+                      add.band(xs, df, counter, steps(df.all$y,num.bands), grounds[counter+1],fill.id)})}, 
            rev(split(df.all,df.all$group)),
            counter(y_labels))
 }
@@ -188,12 +187,29 @@ calculate.diff = function(df,to.calculate){
   df
 }
 
-plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,band.colors=NULL,
+re.order = function(df,should.reorder){
+  if(should.reorder) {
+    ordered = ddply(df,.(group), function(x) sum(abs(x$y)))
+    ordered = ordered[order(ordered$V1,decreasing=T),]
+    df$group = factor(df$group,levels=ordered$group)
+  }
+  df
+}
+
+reverse.mapping = function(mapping){
+  mapping2 = names(mapping)
+  names(mapping2) = lapply(names(mapping),function(x) mapping[[x]])  
+  mapping2
+}
+
+plot_horizon = function(data,mapping=aes(x=x,y=y,group=group),num.bands=2,smoothing=NULL,band.colors=NULL,
                         calculate.diff=FALSE,
+                        reorder.by.change=TRUE,
                         loess.span=0.5,loess.interval=1,spline.n=3*nrow(data)){
   check_mapping(mapping)
-  plot.bands(ddply(smooth.data(calculate.diff(rename(data,mapping),
+  plot.bands(ddply(smooth.data(re.order(calculate.diff(rename(data,reverse.mapping(mapping)),
                                               calculate.diff),
+                                        reorder.by.change),
                                smoothing,
                                loess.span,
                                loess.interval,
@@ -205,8 +221,11 @@ plot_horizon = function(data,mapping=aes(x=x,y=y),num.bands=2,smoothing=NULL,ban
              band.colors)
 }
 
-p = plot_horizon(subset(eu(),x<=200),aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.1,calculate.diff=TRUE)
-print(p)
+# Examples
+
+#e = subset(eu(),x<=200)
+#p = plot_horizon(e,aes(x,y,group=group),num.bands=2,smoothing="loess",loess.span=0.2,loess.interval=0.5,calculate.diff=TRUE)
+#print(p)
 
 #df = data.frame(group="A",x=0:9,y=c(0.2,0.8627684,0.92,-1,-0.8324571,-1.0061331,-0.5056517,0.1085939,0.6393061,-0.9098858))
 #p = plot_horizon(df,aes(x,y,group=group),2,smoothing="spline", spline.n=40) 
